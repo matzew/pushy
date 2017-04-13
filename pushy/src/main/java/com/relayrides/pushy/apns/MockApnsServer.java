@@ -36,6 +36,8 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import io.netty.util.concurrent.SucceededFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>A mock APNs server emulates the behavior of a real APNs server (but doesn't actually deliver notifications to
@@ -64,6 +66,8 @@ public class MockApnsServer {
     private ChannelGroup allChannels;
 
     private boolean emulateInternalErrors = false;
+
+    private static final Logger log = LoggerFactory.getLogger(MockApnsServer.class);
 
     protected MockApnsServer(final SslContext sslContext, final EventLoopGroup eventLoopGroup) {
         this.bootstrap = new ServerBootstrap();

@@ -37,6 +37,8 @@ import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2Settings;
 import io.netty.util.AsciiString;
 import io.netty.util.concurrent.PromiseCombiner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class MockApnsServerHandler extends Http2ConnectionHandler implements Http2FrameListener {
 
@@ -62,6 +64,8 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
     private static final Pattern TOKEN_PATTERN = Pattern.compile("[0-9a-fA-F]{64}");
 
     private static final long AUTH_TOKEN_EXPIRATION_MILLIS = TimeUnit.HOURS.toMillis(1);
+
+    private static final Logger log = LoggerFactory.getLogger(MockApnsServerHandler.class);
 
     private static final Gson PAYLOAD_GSON = new GsonBuilder()
             .registerTypeAdapter(Date.class, new DateAsTimeSinceEpochTypeAdapter(TimeUnit.MILLISECONDS))
@@ -278,6 +282,7 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
                 if (data.readableBytes() <= MAX_CONTENT_LENGTH) {
                     context.channel().writeAndFlush(new AcceptNotificationResponse(streamId));
                 } else {
+                    log.error("ERROR ......");
                     context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.PAYLOAD_TOO_LARGE));
                 }
             }
@@ -339,7 +344,7 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
         final String topic;
         {
             final CharSequence topicSequence = headers.get(APNS_TOPIC_HEADER);
-            topic = (topicSequence != null) ? topicSequence.toString() : null;
+            topic = (topicSequence != null) ? topicSequence.toString() : "net.wessendorf.aerodoc";
         }
 
         if (this.useTokenAuthentication) {
@@ -361,10 +366,10 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
                     final AuthenticationTokenClaims claims = this.getVerifiedClaimsFromAuthenticationToken(authenticationToken);
                     final Set<String> topics = this.apnsServer.getTopicsForTeamId(claims.getIssuer());
 
-                    if (topics == null || !topics.contains(topic)) {
-                        context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.DEVICE_TOKEN_NOT_FOR_TOPIC));
-                        return;
-                    }
+//                    if (topics == null || !topics.contains(topic)) {
+//                        context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.DEVICE_TOKEN_NOT_FOR_TOPIC));
+//                        return;
+//                    }
 
                     if (!this.verifiedAuthenticationTokensByTopic.containsKey(topic)) {
                         this.verifiedAuthenticationTokensByTopic.put(topic, new HashSet<String>());
@@ -382,10 +387,10 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
             }
         } else {
             if (topic != null) {
-                if (!this.topicsFromClientCertificate.contains(topic)) {
-                    context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.BAD_TOPIC));
-                    return;
-                }
+//                if (!this.topicsFromClientCertificate.contains(topic)) {
+//                    context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.BAD_TOPIC));
+//                    return;
+//                }
             } else {
                 context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.MISSING_TOPIC));
                 return;
@@ -416,10 +421,10 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
 
                     final Matcher tokenMatcher = TOKEN_PATTERN.matcher(tokenString);
 
-                    if (!tokenMatcher.matches()) {
-                        context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.BAD_DEVICE_TOKEN));
-                        return;
-                    }
+//                    if (!tokenMatcher.matches()) {
+//                        context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.BAD_DEVICE_TOKEN));
+//                        return;
+//                    }
 
                     final Date expirationTimestamp = this.apnsServer.getExpirationTimestampForTokenInTopic(tokenString, topic);
 
@@ -428,10 +433,10 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
                         return;
                     }
 
-                    if (!this.apnsServer.isTokenRegisteredForTopic(tokenString, topic)) {
-                        context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.DEVICE_TOKEN_NOT_FOR_TOPIC));
-                        return;
-                    }
+//                    if (!this.apnsServer.isTokenRegisteredForTopic(tokenString, topic)) {
+//                        context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.DEVICE_TOKEN_NOT_FOR_TOPIC));
+//                        return;
+//                    }
                 }
             } else {
                 context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.BAD_PATH));
@@ -491,11 +496,15 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
 
     @Override
     public void write(final ChannelHandlerContext context, final Object message, final ChannelPromise writePromise) throws Exception {
+
+
         if (message instanceof AcceptNotificationResponse) {
             final AcceptNotificationResponse acceptNotificationResponse = (AcceptNotificationResponse) message;
             this.encoder().writeHeaders(context, acceptNotificationResponse.getStreamId(), SUCCESS_HEADERS, 0, true, writePromise);
+            log.info("Successfully handled Push Notification");
         } else if (message instanceof RejectNotificationResponse) {
             final RejectNotificationResponse rejectNotificationResponse = (RejectNotificationResponse) message;
+            log.info("MESSAGE was rejected: " + ((RejectNotificationResponse) message).getErrorReason().getReasonText());
 
             final Http2Headers headers = new DefaultHttp2Headers();
             headers.status(rejectNotificationResponse.getErrorReason().getHttpResponseStatus().codeAsText());
