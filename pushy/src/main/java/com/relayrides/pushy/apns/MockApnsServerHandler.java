@@ -282,7 +282,6 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
                 if (data.readableBytes() <= MAX_CONTENT_LENGTH) {
                     context.channel().writeAndFlush(new AcceptNotificationResponse(streamId));
                 } else {
-                    log.error("ERROR ......");
                     context.channel().writeAndFlush(new RejectNotificationResponse(streamId, apnsId, ErrorReason.PAYLOAD_TOO_LARGE));
                 }
             }
@@ -501,10 +500,10 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
         if (message instanceof AcceptNotificationResponse) {
             final AcceptNotificationResponse acceptNotificationResponse = (AcceptNotificationResponse) message;
             this.encoder().writeHeaders(context, acceptNotificationResponse.getStreamId(), SUCCESS_HEADERS, 0, true, writePromise);
-            log.info("Successfully handled Push Notification");
+            log.trace("Successfully handled Push Notification");
         } else if (message instanceof RejectNotificationResponse) {
             final RejectNotificationResponse rejectNotificationResponse = (RejectNotificationResponse) message;
-            log.info("MESSAGE was rejected: " + ((RejectNotificationResponse) message).getErrorReason().getReasonText());
+            log.trace("MESSAGE was rejected: " + ((RejectNotificationResponse) message).getErrorReason().getReasonText());
 
             final Http2Headers headers = new DefaultHttp2Headers();
             headers.status(rejectNotificationResponse.getErrorReason().getHttpResponseStatus().codeAsText());
