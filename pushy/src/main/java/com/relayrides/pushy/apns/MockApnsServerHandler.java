@@ -500,10 +500,10 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
         if (message instanceof AcceptNotificationResponse) {
             final AcceptNotificationResponse acceptNotificationResponse = (AcceptNotificationResponse) message;
             this.encoder().writeHeaders(context, acceptNotificationResponse.getStreamId(), SUCCESS_HEADERS, 0, true, writePromise);
-            log.trace("Successfully handled Push Notification");
+            log.info("Successfully handled Push Notification");
         } else if (message instanceof RejectNotificationResponse) {
             final RejectNotificationResponse rejectNotificationResponse = (RejectNotificationResponse) message;
-            log.trace("MESSAGE was rejected: " + ((RejectNotificationResponse) message).getErrorReason().getReasonText());
+            log.info("MESSAGE was rejected: " + ((RejectNotificationResponse) message).getErrorReason().getReasonText());
 
             final Http2Headers headers = new DefaultHttp2Headers();
             headers.status(rejectNotificationResponse.getErrorReason().getHttpResponseStatus().codeAsText());
